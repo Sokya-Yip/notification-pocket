@@ -6,9 +6,9 @@
 
 ## 下载
 
-正式 APK 和 SHA-256 校验文件发布在本仓库的 **GitHub Releases**。当前版本为 **v1.4.2（versionCode 7）**，支持 Android 8.1（API 27）及以上。
+正式 APK 和 SHA-256 校验文件发布在本仓库的 **GitHub Releases**。当前版本为 **v1.4.3（versionCode 8）**，支持 Android 8.1（API 27）及以上。
 
-- 发布文件：`notification-pocket-v1.4.2.apk`、`SHA256.txt`
+- 发布文件：`notification-pocket-v1.4.3.apk`、`SHA256.txt`
 - 包名：`com.notificationpocket`
 - minSdk 27；targetSdk / compileSdk 36
 - [隐私政策](PRIVACY.md) · [更新日志](CHANGELOG.md) · [验证范围](docs/验证范围.md)
@@ -49,7 +49,7 @@
 
 核心功能完整免费，无广告、订阅、强制登录或功能付费墙。
 
-首页底部保留“支持作者 · 微信赞赏”，使用小爱心和浅暖色作为轻量标识；“关于”中也有同一入口。弹窗只展示一条主路径：
+首页底部保留“支持作者 · 微信赞赏”，采用随内容宽度居中的透明细边框和绿色小爱心，作为次级轻量入口；“关于”中也有同一入口。弹窗只展示一条主路径：
 
 1. 长按二维码或点击“发送赞赏码到微信”。
 2. App 通过系统分享把内置原图交给微信，优先直达微信公开导出的发送聊天图片接收页；版本不兼容时回退普通分享。

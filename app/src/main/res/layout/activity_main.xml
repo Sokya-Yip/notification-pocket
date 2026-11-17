@@ -209,14 +209,14 @@
     <Button
         style="@style/Widget.NotificationPocket.Button.Tonal"
         android:id="@+id/support_button"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_support_button"
+        android:background="@drawable/bg_support_outline"
         android:drawableStart="@drawable/ic_support_heart"
         android:drawablePadding="8dp"
-        android:text="@string/support_entry"
-        android:textColor="@color/support_ink" />
+        android:text="@string/support_entry" />
 
     <TextView
         android:layout_width="match_parent"

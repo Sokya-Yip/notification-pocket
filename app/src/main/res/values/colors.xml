@@ -8,10 +8,7 @@
     <color name="forest_pressed">#1D4F3E</color>
     <color name="soft_green">#DFEBE4</color>
     <color name="soft_green_pressed">#CFE0D6</color>
-    <color name="support_warm">#F5E8CF</color>
-    <color name="support_ink">#674718</color>
-    <color name="support_heart">#986321</color>
-    <color name="support_ripple">#29986321</color>
+    <color name="support_outline">#B8CCC1</color>
     <color name="button_ripple">#2927644F</color>
     <color name="divider">#D7E1DB</color>
     <color name="muted">#89968F</color>
