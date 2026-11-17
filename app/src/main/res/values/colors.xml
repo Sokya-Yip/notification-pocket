@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mist">#EEF3F0</color>
+    <color name="paper">#FAFCFB</color>
+    <color name="ink">#17241E</color>
+    <color name="secondary_ink">#5B6B63</color>
+    <color name="forest">#27644F</color>
+    <color name="forest_pressed">#1D4F3E</color>
+    <color name="soft_green">#DFEBE4</color>
+    <color name="soft_green_pressed">#CFE0D6</color>
+    <color name="support_warm">#F5E8CF</color>
+    <color name="support_ink">#674718</color>
+    <color name="support_heart">#986321</color>
+    <color name="support_ripple">#29986321</color>
+    <color name="button_ripple">#2927644F</color>
+    <color name="divider">#D7E1DB</color>
+    <color name="muted">#89968F</color>
+</resources>

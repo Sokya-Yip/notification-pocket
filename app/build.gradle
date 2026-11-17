@@ -1,0 +1,62 @@
+plugins {
+    id 'com.android.application'
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.isFile()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+android {
+    namespace 'com.notificationpocket'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.notificationpocket'
+        minSdk 27
+        targetSdk 36
+        versionCode 7
+        versionName '1.4.2'
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.isFile()) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (keystorePropertiesFile.isFile()) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+tasks.matching { it.name == 'packageRelease' }.configureEach {
+    doFirst {
+        if (!keystorePropertiesFile.isFile()) {
+            throw new GradleException('Release signing is not configured. Copy keystore.properties.example to keystore.properties and use a private release key.')
+        }
+    }
+}
+
+// Deliberately no dependencies and no network permission.

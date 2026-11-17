@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/mist"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="18dp"
+        android:paddingBottom="14dp">
+
+        <ImageView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_launcher" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@color/ink"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/app_subtitle"
+                android:textColor="@color/secondary_ink"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <Button
+            style="@style/Widget.NotificationPocket.Button.Tonal"
+            android:id="@+id/about_button"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:text="@string/about" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/permission_dot"
+            android:layout_width="9dp"
+            android:layout_height="9dp"
+            android:contentDescription="@null"
+            android:src="@drawable/bg_status_dot" />
+
+        <TextView
+            android:id="@+id/permission_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="9dp"
+            android:layout_weight="1"
+            android:text="@string/permission_needed"
+            android:textColor="@color/secondary_ink"
+            android:textSize="13sp" />
+
+        <Button
+            style="@style/Widget.NotificationPocket.Button.Tonal"
+            android:id="@+id/permission_button"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="@string/grant_permission" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/permission_guide"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:lineSpacingExtra="2dp"
+            android:text="@string/permission_guide"
+            android:textColor="@color/secondary_ink"
+            android:textSize="12sp" />
+
+        <Button
+            style="@style/Widget.NotificationPocket.Button.Tonal"
+            android:id="@+id/restricted_settings_button"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:text="@string/restricted_settings_button" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="18dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/hidden_tab"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/hidden_tab_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/hidden_tab"
+                android:textColor="@color/forest"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <View
+                android:id="@+id/hidden_indicator"
+                android:layout_width="32dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="7dp"
+                android:background="@drawable/bg_tab_indicator" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/active_tab"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/active_tab_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/active_tab"
+                android:textColor="@color/muted"
+                android:textSize="16sp" />
+
+            <View
+                android:id="@+id/active_indicator"
+                android:layout_width="32dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="7dp"
+                android:background="@drawable/bg_tab_indicator"
+                android:visibility="invisible" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/notification_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:divider="@color/divider"
+            android:dividerHeight="1dp"
+            android:listSelector="?android:attr/selectableItemBackground"
+            android:paddingTop="4dp"
+            android:paddingBottom="16dp"
+            android:scrollbars="none" />
+
+        <TextView
+            android:id="@+id/empty_text"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:lineSpacingExtra="6dp"
+            android:padding="32dp"
+            android:text="@string/empty_hidden"
+            android:textColor="@color/secondary_ink"
+            android:textSize="14sp" />
+    </FrameLayout>
+
+    <Button
+        style="@style/Widget.NotificationPocket.Button.Tonal"
+        android:id="@+id/support_button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_support_button"
+        android:drawableStart="@drawable/ic_support_heart"
+        android:drawablePadding="8dp"
+        android:text="@string/support_entry"
+        android:textColor="@color/support_ink" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:paddingBottom="10dp"
+        android:text="@string/privacy_footer"
+        android:textColor="@color/muted"
+        android:textSize="11sp" />
+
+</LinearLayout>
