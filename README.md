@@ -8,7 +8,7 @@
 
 正式 APK 和 SHA-256 校验文件发布在本仓库的 **GitHub Releases**。当前版本为 **v1.4.2（versionCode 7）**，支持 Android 8.1（API 27）及以上。
 
-- 发布文件：`通知收纳-v1.4.2.apk`、`SHA256.txt`
+- 发布文件：`notification-pocket-v1.4.2.apk`、`SHA256.txt`
 - 包名：`com.notificationpocket`
 - minSdk 27；targetSdk / compileSdk 36
 - [隐私政策](PRIVACY.md) · [更新日志](CHANGELOG.md) · [验证范围](docs/验证范围.md)
