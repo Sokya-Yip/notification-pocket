@@ -82,11 +82,14 @@ Release 需要你自己的私密签名配置。复制 `keystore.properties.examp
 ```powershell
 javac -encoding UTF-8 -d build/selftest `
   app/src/main/java/com/notificationpocket/Durations.java `
-  tools/com/notificationpocket/DurationsSelfTest.java
+  app/src/main/java/com/notificationpocket/RebindRequest.java `
+  tools/com/notificationpocket/DurationsSelfTest.java `
+  tools/com/notificationpocket/RebindRequestSelfTest.java
 java -cp build/selftest com.notificationpocket.DurationsSelfTest
+java -cp build/selftest com.notificationpocket.RebindRequestSelfTest
 ```
 
-预期输出：`DurationsSelfTest: 4 groups passed`。覆盖三种文档化时长、严格递增关系、正数约束和默认长期使用 `LONG_TERM_MS`。
+预期输出：两个 SelfTest 均为 `4 groups passed`。时长测试覆盖三种文档化时长、严格递增关系、正数约束和默认长期使用 `LONG_TERM_MS`；重连测试覆盖自动恢复不解绑、手动重置仅首轮生效、取消清理和后续自动恢复不继承手动重置。
 
 ## 隐私与权限
 

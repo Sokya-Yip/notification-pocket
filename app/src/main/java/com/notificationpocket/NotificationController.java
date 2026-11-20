@@ -50,6 +50,7 @@ public final class NotificationController {
     private Context applicationContext;
     private int nextRebindAttempt;
     private boolean rebindScheduled;
+    private final RebindRequest rebindRequest = new RebindRequest();
     private long lastDisconnectRecoveryMs = -DISCONNECT_RECOVERY_COOLDOWN_MS;
 
     private final Runnable rebindTask = new Runnable() {
@@ -65,6 +66,7 @@ public final class NotificationController {
                 return;
             }
             ComponentName listener = new ComponentName(context, NotificationPocketService.class);
+            boolean resetSystemBinding = rebindRequest.consumeResetSystemBinding();
             try {
                 NotificationManager manager = context.getSystemService(NotificationManager.class);
                 if (manager == null || !manager.isNotificationListenerAccessGranted(listener)) {
@@ -75,7 +77,7 @@ public final class NotificationController {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Requesting listener rebind, attempt " + (nextRebindAttempt + 1));
                 }
-                requestListenerRebind(listener, nextRebindAttempt == 0);
+                requestListenerRebind(listener, resetSystemBinding);
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Listener rebind request returned");
                 }
@@ -105,6 +107,7 @@ public final class NotificationController {
         mainHandler.removeCallbacks(rebindTask);
         rebindScheduled = false;
         nextRebindAttempt = 0;
+        rebindRequest.cancel();
         lastDisconnectRecoveryMs = -DISCONNECT_RECOVERY_COOLDOWN_MS;
         applicationContext = null;
         service = attachedService;
@@ -126,24 +129,39 @@ public final class NotificationController {
         return rebindScheduled;
     }
 
-    /** Starts a bounded recovery round from an activity, process start, or package update. */
+    /** Starts a bounded recovery round without disturbing an in-progress system binding. */
     public void recoverConnection(Context context) {
-        recoverConnection(context, false);
+        recoverConnection(context, false, false);
     }
 
     /** Rate-limits recovery caused by repeated background disconnect callbacks. */
     void recoverConnectionAfterDisconnect(Context context) {
-        recoverConnection(context, true);
+        recoverConnection(context, true, false);
     }
 
-    private void recoverConnection(Context context, boolean afterDisconnect) {
+    /** A binding reset is reserved for an explicit user request, not initial authorization. */
+    public void resetAndRecoverConnection(Context context) {
+        recoverConnection(context, false, true);
+    }
+
+    private void recoverConnection(
+            Context context, boolean afterDisconnect, boolean resetSystemBinding) {
         Context appContext = context.getApplicationContext();
         mainHandler.post(() -> {
-            if (service != null || rebindScheduled) {
+            if (service != null) {
                 return;
             }
+            if (rebindScheduled) {
+                if (!resetSystemBinding) {
+                    return;
+                }
+                // Manual recovery runs immediately instead of inheriting an automatic delay.
+                mainHandler.removeCallbacks(rebindTask);
+                rebindScheduled = false;
+            }
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Recovery requested, afterDisconnect=" + afterDisconnect);
+                Log.d(TAG, "Recovery requested, afterDisconnect=" + afterDisconnect
+                        + ", resetSystemBinding=" + resetSystemBinding);
             }
             if (afterDisconnect) {
                 long now = SystemClock.elapsedRealtime();
@@ -154,6 +172,11 @@ public final class NotificationController {
             }
             applicationContext = appContext;
             nextRebindAttempt = 0;
+            if (resetSystemBinding) {
+                rebindRequest.beginManual();
+            } else {
+                rebindRequest.beginAutomatic();
+            }
             scheduleRebind(REBIND_DELAYS_MS[0]);
             notifyChanged();
         });
@@ -180,6 +203,7 @@ public final class NotificationController {
         mainHandler.removeCallbacks(rebindTask);
         rebindScheduled = false;
         nextRebindAttempt = REBIND_DELAYS_MS.length;
+        rebindRequest.cancel();
         applicationContext = null;
     }
 

@@ -54,4 +54,10 @@
     <string name="support_share_wechat">发送赞赏码到微信</string>
     <string name="support_wechat_unavailable">未找到微信或当前微信无法接收图片，请改用微信“扫一扫”。</string>
     <string name="close">关闭</string>
+    <string name="check_update">检查更新</string>
+    <string name="update_open_failed">无法打开浏览器，请手动访问 GitHub Releases 页面</string>
+    <string name="crash_dialog_title">上次运行异常</string>
+    <string name="crash_dialog_message">应用上次运行时发生异常。点“复制日志”把内容发给作者，有助于定位问题。</string>
+    <string name="copy">复制</string>
+    <string name="copied">已复制，可粘贴发送</string>
 </resources>

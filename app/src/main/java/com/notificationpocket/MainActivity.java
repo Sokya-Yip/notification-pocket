@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -13,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.Button;
@@ -26,6 +28,14 @@ import java.util.Collections;
 import java.util.List;
 
 public final class MainActivity extends Activity implements NotificationController.Listener {
+    private static final String TAG = "NotificationPocket";
+
+    private enum NotificationAccess {
+        GRANTED,
+        DENIED,
+        UNKNOWN
+    }
+
     private final NotificationController controller = NotificationController.getInstance();
 
     private NotificationAdapter adapter;
@@ -71,10 +81,10 @@ public final class MainActivity extends Activity implements NotificationControll
         hiddenTab.setOnClickListener(view -> selectTab(true));
         activeTab.setOnClickListener(view -> selectTab(false));
         permissionButton.setOnClickListener(view -> {
-            if (hasNotificationAccess()) {
-                requestServiceRebind();
-            } else {
+            if (queryNotificationAccess() == NotificationAccess.DENIED) {
                 openNotificationAccessSettings();
+            } else {
+                requestServiceRebind();
             }
         });
         findViewById(R.id.about_button).setOnClickListener(view -> showAboutDialog());
@@ -82,6 +92,7 @@ public final class MainActivity extends Activity implements NotificationControll
         findViewById(R.id.restricted_settings_button).setOnClickListener(
                 view -> showRestrictedSettingsDialog());
         selectTab(false);
+        showCrashDialogIfPresent();
     }
 
     @Override
@@ -97,7 +108,7 @@ public final class MainActivity extends Activity implements NotificationControll
         refresh();
         if (resumeAuthorization) {
             resumeAuthorization = false;
-            if (!hasNotificationAccess()) {
+            if (queryNotificationAccess() == NotificationAccess.DENIED) {
                 openNotificationAccessSettings();
             }
         }
@@ -138,21 +149,22 @@ public final class MainActivity extends Activity implements NotificationControll
         if (adapter == null) {
             return;
         }
-        boolean granted = hasNotificationAccess();
+        NotificationAccess access = queryNotificationAccess();
+        boolean accessDenied = access == NotificationAccess.DENIED;
         boolean connected = controller.isConnected();
         boolean recovering = controller.isRecovering();
-        List<NotificationEntry> hidden = granted && connected
+        List<NotificationEntry> hidden = !accessDenied && connected
                 ? controller.getHidden(this) : Collections.emptyList();
-        List<NotificationEntry> active = granted && connected
+        List<NotificationEntry> active = !accessDenied && connected
                 ? controller.getActive(this) : Collections.emptyList();
 
         hiddenTabText.setText(getString(R.string.hidden_tab) + " " + hidden.size());
         activeTabText.setText(getString(R.string.active_tab) + " " + active.size());
         adapter.setItems(showHidden ? hidden : active);
         updateTabAppearance();
-        updatePermissionAppearance(granted, connected, recovering);
+        updatePermissionAppearance(access, connected, recovering);
 
-        if (!granted) {
+        if (accessDenied) {
             emptyText.setText(R.string.empty_need_permission);
         } else if (!connected) {
             emptyText.setText(recovering
@@ -175,8 +187,10 @@ public final class MainActivity extends Activity implements NotificationControll
         activeTabText.setTypeface(Typeface.DEFAULT, showHidden ? Typeface.NORMAL : Typeface.BOLD);
     }
 
-    private void updatePermissionAppearance(boolean granted, boolean connected, boolean recovering) {
-        if (!granted) {
+    private void updatePermissionAppearance(
+            NotificationAccess access, boolean connected, boolean recovering) {
+        boolean accessDenied = access == NotificationAccess.DENIED;
+        if (accessDenied) {
             permissionText.setText(R.string.permission_needed);
         } else if (connected) {
             permissionText.setText(R.string.permission_granted);
@@ -184,15 +198,26 @@ public final class MainActivity extends Activity implements NotificationControll
             permissionText.setText(recovering
                     ? R.string.permission_connecting : R.string.permission_disconnected);
         }
-        permissionButton.setText(granted ? R.string.reconnect : R.string.grant_permission);
-        permissionGuide.setVisibility(granted ? View.GONE : View.VISIBLE);
-        permissionDot.setColorFilter(getColor(granted && connected ? R.color.forest : R.color.muted));
+        permissionButton.setText(accessDenied ? R.string.grant_permission : R.string.reconnect);
+        permissionGuide.setVisibility(accessDenied ? View.VISIBLE : View.GONE);
+        permissionDot.setColorFilter(getColor(
+                !accessDenied && connected ? R.color.forest : R.color.muted));
     }
 
-    private boolean hasNotificationAccess() {
+    private NotificationAccess queryNotificationAccess() {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        return manager != null && manager.isNotificationListenerAccessGranted(
-                new ComponentName(this, NotificationPocketService.class));
+        if (manager == null) {
+            return NotificationAccess.UNKNOWN;
+        }
+        try {
+            return manager.isNotificationListenerAccessGranted(
+                    new ComponentName(this, NotificationPocketService.class))
+                    ? NotificationAccess.GRANTED : NotificationAccess.DENIED;
+        } catch (RuntimeException unavailable) {
+            // A vendor service can be temporarily unavailable while applying the grant.
+            Log.w(TAG, "Notification access query failed", unavailable);
+            return NotificationAccess.UNKNOWN;
+        }
     }
 
     private void openNotificationAccessSettings() {
@@ -249,7 +274,7 @@ public final class MainActivity extends Activity implements NotificationControll
             Toast.makeText(this, R.string.already_connected, Toast.LENGTH_SHORT).show();
             return;
         }
-        controller.recoverConnection(this);
+        controller.resetAndRecoverConnection(this);
         Toast.makeText(this, R.string.reconnecting, Toast.LENGTH_SHORT).show();
     }
 
@@ -257,10 +282,45 @@ public final class MainActivity extends Activity implements NotificationControll
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(R.string.about_title)
                 .setMessage(getString(R.string.about_message, BuildConfig.VERSION_NAME))
-                .setPositiveButton(R.string.close, null);
+                .setPositiveButton(R.string.close, null)
+                .setNeutralButton(R.string.check_update,
+                        (dialog, which) -> openReleasePage());
         builder.setNegativeButton(R.string.support_author,
                 (dialog, which) -> showSupportDialog());
         builder.show();
+    }
+
+    /** Opens the release page in the browser; this app itself keeps no network access. */
+    private void openReleasePage() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://github.com/Sokya-Yip/notification-pocket/releases/latest")));
+        } catch (RuntimeException unavailable) {
+            Toast.makeText(this, R.string.update_open_failed, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** Surfaces an uncaught stack trace on the next launch so testers can copy it without adb. */
+    private void showCrashDialogIfPresent() {
+        String report = NotificationPocketApplication.readCrashLog(this);
+        if (report == null || report.isEmpty()) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.crash_dialog_title)
+                .setMessage(getString(R.string.crash_dialog_message) + "\n\n" + report)
+                .setPositiveButton(R.string.close, (dialog, which) ->
+                        NotificationPocketApplication.clearCrashLog(this))
+                .setNeutralButton(R.string.copy, (dialog, which) -> {
+                    ClipboardManager clipboard =
+                            (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(ClipData.newPlainText("crash log", report));
+                        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show();
+                    }
+                    NotificationPocketApplication.clearCrashLog(this);
+                })
+                .show();
     }
 
     private void showSupportDialog() {
