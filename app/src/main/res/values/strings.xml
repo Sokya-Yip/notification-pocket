@@ -81,9 +81,13 @@
     <string name="feedback_source_crash">未捕获异常</string>
     <string name="feedback_source_exits">系统退出记录</string>
     <string name="feedback_source_empty">尚未产生授权轨迹或未捕获异常；仍可填写描述并生成反馈</string>
+    <string name="settings_blocked_title">系统没有打开授权页</string>
+    <string name="settings_blocked_message">部分系统（常见于澎湃OS / MIUI）会拦截从应用内跳转系统设置。\n\n请手动完成两步：\n1. 安全中心 → 应用管理 → 通知收纳 → 打开“自启动”和“后台弹出界面”；\n2. 系统设置 → 通知使用权 → 找到“通知收纳”并打开开关。\n\n照做后仍不正常时，请点“复制”或“分享 TXT”，把这段诊断内容发给作者。里面的日志段落请勿删减，定位问题要靠它。</string>
+    <string name="feedback_issue_crash">授权时闪退或回桌面</string>
+    <string name="feedback_issue_unopenable">无法打开授权页</string>
     <string-array name="feedback_issue_types">
-        <item>授权时闪退或回桌面</item>
-        <item>无法打开授权页</item>
+        <item>@string/feedback_issue_crash</item>
+        <item>@string/feedback_issue_unopenable</item>
         <item>通知隐藏失败</item>
         <item>通知恢复失败</item>
         <item>服务连接或重新连接</item>

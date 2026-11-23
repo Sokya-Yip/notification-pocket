@@ -67,6 +67,7 @@ public final class MainActivity extends Activity implements NotificationControll
     /** Set once the vendor detail page failed to appear, so a retry skips it. */
     private boolean detailSettingsUnreachable;
     private Runnable settingsHandoffCheck;
+    private Runnable settingsHandoffRepair;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -296,7 +297,10 @@ public final class MainActivity extends Activity implements NotificationControll
                     .putExtra(FRAGMENT_ARGS_KEY, flattened)
                     .putExtra(SHOW_FRAGMENT_ARGS, fragmentArgs);
             if (startSettingsActivity(detail)) {
-                watchSettingsHandoff();
+                watchSettingsHandoff(() -> {
+                    detailSettingsUnreachable = true;
+                    openNotificationAccessList();
+                });
                 return;
             }
         }
@@ -316,11 +320,13 @@ public final class MainActivity extends Activity implements NotificationControll
     private void openNotificationAccessList() {
         if (startSettingsActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))) {
             Toast.makeText(this, R.string.find_notification_pocket, Toast.LENGTH_LONG).show();
+            watchSettingsHandoff(this::showSettingsBlockedDialog);
             return;
         }
-        if (!openApplicationDetailsSettings()) {
-            Toast.makeText(this, R.string.permission_settings_unavailable, Toast.LENGTH_LONG).show();
+        if (openApplicationDetailsSettings()) {
+            return;
         }
+        showSettingsBlockedDialog();
     }
 
     /**
@@ -329,25 +335,49 @@ public final class MainActivity extends Activity implements NotificationControll
      * evidence that Settings really took over, so repair the handoff instead of trusting the
      * return value of startActivity.
      */
-    private void watchSettingsHandoff() {
+    private void watchSettingsHandoff(Runnable repair) {
         cancelSettingsHandoffWatch();
+        settingsHandoffRepair = repair;
         settingsHandoffCheck = () -> {
             settingsHandoffCheck = null;
+            Runnable next = settingsHandoffRepair;
+            settingsHandoffRepair = null;
             if (!hasWindowFocus() || isFinishing() || isDestroyed()) {
                 return;
             }
-            detailSettingsUnreachable = true;
             AuthorizationDiagnostics.record(this, "settings_handoff_not_observed");
-            openNotificationAccessList();
+            if (next != null) {
+                next.run();
+            }
         };
         permissionButton.postDelayed(settingsHandoffCheck, SETTINGS_HANDOFF_CHECK_MS);
     }
 
     private void cancelSettingsHandoffWatch() {
+        settingsHandoffRepair = null;
         if (settingsHandoffCheck != null) {
             permissionButton.removeCallbacks(settingsHandoffCheck);
             settingsHandoffCheck = null;
         }
+    }
+
+    /**
+     * Shown when no system page took over. It states the manual path a blocked vendor build
+     * leaves as the only option, and hands the user a ready report to paste back in one tap,
+     * so a device we cannot test still produces evidence.
+     */
+    private void showSettingsBlockedDialog() {
+        String report = FeedbackReport.build(
+                this, getString(R.string.feedback_issue_unopenable), "");
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.settings_blocked_title)
+                .setMessage(R.string.settings_blocked_message)
+                .setPositiveButton(R.string.feedback_share,
+                        (dialog, which) -> shareFeedback(report))
+                .setNeutralButton(R.string.copy, (dialog, which) ->
+                        copyText("notification pocket feedback", report))
+                .setNegativeButton(R.string.close, null)
+                .show();
     }
 
     private void showRestrictedSettingsDialog() {
