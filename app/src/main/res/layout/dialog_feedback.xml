@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingMultiplier="1.15"
+            android:text="@string/feedback_intro"
+            android:textColor="@color/ink"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="sans-serif-medium"
+            android:labelFor="@+id/feedback_issue"
+            android:text="@string/feedback_issue_label"
+            android:textColor="@color/forest"
+            android:textSize="13sp" />
+
+        <Spinner
+            android:id="@id/feedback_issue"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:entries="@array/feedback_issue_types"
+            android:minHeight="48dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="sans-serif-medium"
+            android:labelFor="@+id/feedback_description"
+            android:text="@string/feedback_description_label"
+            android:textColor="@color/forest"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@id/feedback_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="top|start"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="500"
+            android:maxLines="5"
+            android:minLines="3"
+            android:scrollbars="vertical"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/muted"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/feedback_sources"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:lineSpacingMultiplier="1.15"
+            android:textColor="@color/secondary_ink"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:lineSpacingMultiplier="1.15"
+            android:text="@string/feedback_privacy"
+            android:textColor="@color/secondary_ink"
+            android:textSize="13sp" />
+    </LinearLayout>
+</ScrollView>

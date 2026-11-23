@@ -25,6 +25,12 @@
             android:exported="false"
             android:grantUriPermissions="true" />
 
+        <provider
+            android:name=".FeedbackShareProvider"
+            android:authorities="${applicationId}.feedback"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".PackageUpdateReceiver"
             android:exported="false">

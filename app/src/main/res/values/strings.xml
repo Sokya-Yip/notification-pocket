@@ -60,4 +60,33 @@
     <string name="crash_dialog_message">应用上次运行时发生异常。点“复制日志”把内容发给作者，有助于定位问题。</string>
     <string name="copy">复制</string>
     <string name="copied">已复制，可粘贴发送</string>
+    <string name="feedback">问题反馈</string>
+    <string name="feedback_intro">选择最接近的问题，可补充你点击了什么、看到了什么。生成后可以先预览，再决定复制还是分享。</string>
+    <string name="feedback_issue_label">问题类型</string>
+    <string name="feedback_description_label">问题描述（可选）</string>
+    <string name="feedback_privacy">报告包含设备/App 版本、系统历史退出原因、最近一次授权轨迹和未捕获异常，不包含通知标题、正文或列表。分享前请检查你填写的描述；App 不会自动上传，接收 App 的后续处理和联网适用其自身规则。</string>
+    <string name="feedback_generate">生成反馈</string>
+    <string name="feedback_preview_title">预览并选择分享方式</string>
+    <string name="feedback_share">分享 TXT</string>
+    <string name="feedback_share_title">分享通知收纳诊断包</string>
+    <string name="feedback_share_failed">无法生成或分享诊断包，请改用“复制”</string>
+    <string name="feedback_clear">清空日志</string>
+    <string name="feedback_clear_title">清空 App 保存的日志？</string>
+    <string name="feedback_clear_message">将删除本机授权轨迹、未捕获异常和已生成的反馈 TXT。Android 系统维护的历史退出原因无法由 App 清空。</string>
+    <string name="feedback_clear_confirm">确认清空</string>
+    <string name="feedback_cleared">App 保存的诊断日志已清空</string>
+    <string name="feedback_clear_failed">部分日志未能清空，请稍后重试</string>
+    <string name="feedback_sources">本机可用：%1$s</string>
+    <string name="feedback_source_authorization">授权轨迹</string>
+    <string name="feedback_source_crash">未捕获异常</string>
+    <string name="feedback_source_exits">系统退出记录</string>
+    <string name="feedback_source_empty">尚未产生授权轨迹或未捕获异常；仍可填写描述并生成反馈</string>
+    <string-array name="feedback_issue_types">
+        <item>授权时闪退或回桌面</item>
+        <item>无法打开授权页</item>
+        <item>通知隐藏失败</item>
+        <item>通知恢复失败</item>
+        <item>服务连接或重新连接</item>
+        <item>其他问题</item>
+    </string-array>
 </resources>

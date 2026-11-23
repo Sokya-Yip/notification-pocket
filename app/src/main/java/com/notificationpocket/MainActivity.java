@@ -9,6 +9,7 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
@@ -17,10 +18,13 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,6 +33,9 @@ import java.util.List;
 
 public final class MainActivity extends Activity implements NotificationController.Listener {
     private static final String TAG = "NotificationPocket";
+    /** Vendor Settings fragment-routing keys; values are the flattened listener component. */
+    private static final String FRAGMENT_ARGS_KEY = ":settings:fragment_args_key";
+    private static final String SHOW_FRAGMENT_ARGS = ":settings:show_fragment_args";
 
     private enum NotificationAccess {
         GRANTED,
@@ -58,9 +65,12 @@ public final class MainActivity extends Activity implements NotificationControll
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AuthorizationDiagnostics.record(this, "activity_create");
         // Remove obsolete automation state from older versions; this version stores no rule state.
         deleteSharedPreferences("quiet_rules");
         setContentView(R.layout.activity_main);
+        // Must run after setContentView: the insets controller needs a created decor view.
+        applyEdgeToEdge();
         bindViews();
         applySystemBarInsets();
 
@@ -81,9 +91,13 @@ public final class MainActivity extends Activity implements NotificationControll
         hiddenTab.setOnClickListener(view -> selectTab(true));
         activeTab.setOnClickListener(view -> selectTab(false));
         permissionButton.setOnClickListener(view -> {
-            if (queryNotificationAccess() == NotificationAccess.DENIED) {
+            AuthorizationDiagnostics.begin(this);
+            AuthorizationDiagnostics.record(this, "connected=" + controller.isConnected()
+                    + " | recovering=" + controller.isRecovering());
+            if (queryNotificationAccess(true) == NotificationAccess.DENIED) {
                 openNotificationAccessSettings();
             } else {
+                AuthorizationDiagnostics.record(this, "permission_not_definitely_denied_rebind");
                 requestServiceRebind();
             }
         });
@@ -104,7 +118,13 @@ public final class MainActivity extends Activity implements NotificationControll
     @Override
     protected void onResume() {
         super.onResume();
+        AuthorizationDiagnostics.record(this, "activity_resume");
+        if (AuthorizationDiagnostics.isActive(this)) {
+            queryNotificationAccess(true);
+        }
+        AuthorizationDiagnostics.record(this, "recover_connection_before");
         controller.recoverConnection(this);
+        AuthorizationDiagnostics.record(this, "recover_connection_after");
         refresh();
         if (resumeAuthorization) {
             resumeAuthorization = false;
@@ -115,9 +135,22 @@ public final class MainActivity extends Activity implements NotificationControll
     }
 
     @Override
+    protected void onPause() {
+        AuthorizationDiagnostics.record(this, "activity_pause");
+        super.onPause();
+    }
+
+    @Override
     protected void onStop() {
+        AuthorizationDiagnostics.record(this, "activity_stop");
         controller.removeListener(this);
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        AuthorizationDiagnostics.record(this, "activity_destroy");
+        super.onDestroy();
     }
 
     @Override
@@ -205,26 +238,53 @@ public final class MainActivity extends Activity implements NotificationControll
     }
 
     private NotificationAccess queryNotificationAccess() {
+        return queryNotificationAccess(false);
+    }
+
+    private NotificationAccess queryNotificationAccess(boolean trace) {
+        if (trace) {
+            AuthorizationDiagnostics.record(this, "permission_query_start");
+        }
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) {
+            if (trace) {
+                AuthorizationDiagnostics.record(this, "permission_query_manager_null");
+            }
             return NotificationAccess.UNKNOWN;
         }
         try {
-            return manager.isNotificationListenerAccessGranted(
+            NotificationAccess result = manager.isNotificationListenerAccessGranted(
                     new ComponentName(this, NotificationPocketService.class))
                     ? NotificationAccess.GRANTED : NotificationAccess.DENIED;
+            if (trace) {
+                AuthorizationDiagnostics.record(this, "permission_query_result=" + result);
+            }
+            return result;
         } catch (RuntimeException unavailable) {
             // A vendor service can be temporarily unavailable while applying the grant.
             Log.w(TAG, "Notification access query failed", unavailable);
+            if (trace) {
+                AuthorizationDiagnostics.record(this, "permission_query_exception", unavailable);
+            }
             return NotificationAccess.UNKNOWN;
         }
     }
 
     private void openNotificationAccessSettings() {
         ComponentName listener = new ComponentName(this, NotificationPocketService.class);
+        // Both builds must exercise the same navigation so emulator checks cover what users run.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Settings reads this extra with getStringExtra and unflattens it. Passing the
+            // ComponentName parcelable instead yields null inside Settings and crashes its
+            // detail page after startActivity has already returned, so our catch cannot see it.
+            String flattened = listener.flattenToString();
+            Bundle fragmentArgs = new Bundle();
+            fragmentArgs.putString(FRAGMENT_ARGS_KEY, flattened);
             Intent detail = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
-                    .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener);
+                    .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, flattened)
+                    // Some vendor Settings builds route the detail page through fragment args.
+                    .putExtra(FRAGMENT_ARGS_KEY, flattened)
+                    .putExtra(SHOW_FRAGMENT_ARGS, fragmentArgs);
             if (startSettingsActivity(detail)) {
                 return;
             }
@@ -261,10 +321,14 @@ public final class MainActivity extends Activity implements NotificationControll
     }
 
     private boolean startSettingsActivity(Intent intent) {
+        String action = String.valueOf(intent.getAction());
+        AuthorizationDiagnostics.record(this, "settings_start_attempt=" + action);
         try {
             startActivity(intent);
+            AuthorizationDiagnostics.record(this, "settings_start_returned=" + action);
             return true;
         } catch (RuntimeException unavailable) {
+            AuthorizationDiagnostics.record(this, "settings_start_exception=" + action, unavailable);
             return false;
         }
     }
@@ -274,20 +338,119 @@ public final class MainActivity extends Activity implements NotificationControll
             Toast.makeText(this, R.string.already_connected, Toast.LENGTH_SHORT).show();
             return;
         }
+        AuthorizationDiagnostics.record(this, "manual_rebind_before");
         controller.resetAndRecoverConnection(this);
+        AuthorizationDiagnostics.record(this, "manual_rebind_after");
         Toast.makeText(this, R.string.reconnecting, Toast.LENGTH_SHORT).show();
     }
 
     private void showAboutDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
                 .setTitle(R.string.about_title)
                 .setMessage(getString(R.string.about_message, BuildConfig.VERSION_NAME))
                 .setPositiveButton(R.string.close, null)
                 .setNeutralButton(R.string.check_update,
-                        (dialog, which) -> openReleasePage());
-        builder.setNegativeButton(R.string.support_author,
-                (dialog, which) -> showSupportDialog());
-        builder.show();
+                        (dialog, which) -> openReleasePage())
+                .setNegativeButton(R.string.feedback,
+                        (dialog, which) -> showFeedbackDialog())
+                .show();
+    }
+
+    private void showFeedbackDialog() {
+        View content = getLayoutInflater().inflate(R.layout.dialog_feedback, null);
+        Spinner issue = content.findViewById(R.id.feedback_issue);
+        EditText description = content.findViewById(R.id.feedback_description);
+        TextView sources = content.findViewById(R.id.feedback_sources);
+        sources.setText(feedbackSourcesSummary());
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.feedback)
+                .setView(content)
+                .setPositiveButton(R.string.feedback_generate, (dialog, which) -> {
+                    String selectedIssue = issue.getSelectedItem() == null
+                            ? getString(R.string.feedback) : issue.getSelectedItem().toString();
+                    String report = FeedbackReport.build(
+                            this, selectedIssue, description.getText().toString());
+                    showFeedbackPreview(report);
+                })
+                .setNegativeButton(R.string.feedback_clear,
+                        (dialog, which) -> confirmClearDiagnostics())
+                .setNeutralButton(R.string.close, null)
+                .show();
+    }
+
+    private String feedbackSourcesSummary() {
+        StringBuilder sources = new StringBuilder();
+        String trace = AuthorizationDiagnostics.read(this);
+        if (trace != null && !trace.isEmpty()) {
+            sources.append(getString(R.string.feedback_source_authorization));
+        }
+        String crash = NotificationPocketApplication.readCrashLog(this);
+        if (crash != null && !crash.isEmpty()) {
+            if (sources.length() > 0) {
+                sources.append("、");
+            }
+            sources.append(getString(R.string.feedback_source_crash));
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (sources.length() > 0) {
+                sources.append("、");
+            }
+            sources.append(getString(R.string.feedback_source_exits));
+        }
+        return sources.length() == 0 ? getString(R.string.feedback_source_empty)
+                : getString(R.string.feedback_sources, sources.toString());
+    }
+
+    private void showFeedbackPreview(String report) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.feedback_preview_title)
+                .setMessage(report)
+                .setPositiveButton(R.string.close, null)
+                .setNegativeButton(R.string.copy, (dialog, which) ->
+                        copyText("notification pocket feedback", report))
+                .setNeutralButton(R.string.feedback_share, (dialog, which) ->
+                        shareFeedback(report))
+                .show();
+    }
+
+    private void shareFeedback(String report) {
+        Uri uri = FeedbackReport.writeShareFile(this, report);
+        if (uri == null) {
+            Toast.makeText(this, R.string.feedback_share_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent share = new Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_STREAM, uri);
+        share.setClipData(ClipData.newUri(getContentResolver(),
+                getString(R.string.feedback_share_title), uri));
+        share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(Intent.createChooser(share, getString(R.string.feedback_share_title)));
+        } catch (RuntimeException unavailable) {
+            Toast.makeText(this, R.string.feedback_share_failed, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void confirmClearDiagnostics() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.feedback_clear_title)
+                .setMessage(R.string.feedback_clear_message)
+                .setPositiveButton(R.string.feedback_clear_confirm, (dialog, which) -> {
+                    boolean cleared = FeedbackReport.clearLocalLogs(this);
+                    Toast.makeText(this, cleared ? R.string.feedback_cleared
+                            : R.string.feedback_clear_failed, Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton(R.string.close, null)
+                .show();
+    }
+
+    private void copyText(String label, String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(ClipData.newPlainText(label, text));
+            Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show();
+        }
     }
 
     /** Opens the release page in the browser; this app itself keeps no network access. */
@@ -309,17 +472,11 @@ public final class MainActivity extends Activity implements NotificationControll
         new AlertDialog.Builder(this)
                 .setTitle(R.string.crash_dialog_title)
                 .setMessage(getString(R.string.crash_dialog_message) + "\n\n" + report)
-                .setPositiveButton(R.string.close, (dialog, which) ->
-                        NotificationPocketApplication.clearCrashLog(this))
-                .setNeutralButton(R.string.copy, (dialog, which) -> {
-                    ClipboardManager clipboard =
-                            (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (clipboard != null) {
-                        clipboard.setPrimaryClip(ClipData.newPlainText("crash log", report));
-                        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show();
-                    }
-                    NotificationPocketApplication.clearCrashLog(this);
-                })
+                .setPositiveButton(R.string.feedback,
+                        (dialog, which) -> showFeedbackDialog())
+                .setNeutralButton(R.string.copy, (dialog, which) ->
+                        copyText("crash log", report))
+                .setNegativeButton(R.string.close, null)
                 .show();
     }
 
@@ -414,6 +571,33 @@ public final class MainActivity extends Activity implements NotificationControll
             Toast.makeText(this, message, Toast.LENGTH_LONG).show();
             refresh();
         });
+    }
+
+    /**
+     * Draws the page behind both system bars so the navigation bar shows the same
+     * background as the content instead of a separate near-white strip. The root
+     * view pads itself with the bar insets, so nothing is covered.
+     */
+    private void applyEdgeToEdge() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // The window still paints the bar colors itself, so both must go transparent.
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+            getWindow().setNavigationBarColor(Color.TRANSPARENT);
+            // The page is light in both bar areas; do not add an automatic contrast scrim.
+            getWindow().setStatusBarContrastEnforced(false);
+            getWindow().setNavigationBarContrastEnforced(false);
+            getWindow().setDecorFitsSystemWindows(false);
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                int appearance = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                        | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                controller.setSystemBarsAppearance(appearance, appearance);
+            }
+        } else {
+            // Older devices always paint opaque bars, so match the content color instead.
+            getWindow().setStatusBarColor(getColor(R.color.mist));
+            getWindow().setNavigationBarColor(getColor(R.color.mist));
+        }
     }
 
     private void applySystemBarInsets() {

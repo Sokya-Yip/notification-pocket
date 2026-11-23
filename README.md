@@ -83,13 +83,16 @@ Release 需要你自己的私密签名配置。复制 `keystore.properties.examp
 javac -encoding UTF-8 -d build/selftest `
   app/src/main/java/com/notificationpocket/Durations.java `
   app/src/main/java/com/notificationpocket/RebindRequest.java `
+  app/src/main/java/com/notificationpocket/FeedbackText.java `
   tools/com/notificationpocket/DurationsSelfTest.java `
-  tools/com/notificationpocket/RebindRequestSelfTest.java
+  tools/com/notificationpocket/RebindRequestSelfTest.java `
+  tools/com/notificationpocket/FeedbackTextSelfTest.java
 java -cp build/selftest com.notificationpocket.DurationsSelfTest
 java -cp build/selftest com.notificationpocket.RebindRequestSelfTest
+java -cp build/selftest com.notificationpocket.FeedbackTextSelfTest
 ```
 
-预期输出：两个 SelfTest 均为 `4 groups passed`。时长测试覆盖三种文档化时长、严格递增关系、正数约束和默认长期使用 `LONG_TERM_MS`；重连测试覆盖自动恢复不解绑、手动重置仅首轮生效、取消清理和后续自动恢复不继承手动重置。
+预期输出：三个 SelfTest 均为 `4 groups passed`。时长测试覆盖三种文档化时长、严格递增关系、正数约束和默认长期使用 `LONG_TERM_MS`；重连测试覆盖自动恢复不解绑、手动重置仅首轮生效、取消清理和后续自动恢复不继承手动重置；反馈文本测试覆盖完整报告、空日志、长度限制与首尾保留、换行和空值规范化。
 
 ## 隐私与权限
 

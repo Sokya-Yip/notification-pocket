@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Debug-only verification entry point. Release builds never include this file. -->
+    <application>
+        <activity
+            android:name=".DebugSelfCheckActivity"
+            android:exported="true"
+            android:label="SelfCheck" />
+    </application>
+</manifest>

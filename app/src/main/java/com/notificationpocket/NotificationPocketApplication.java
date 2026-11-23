@@ -27,11 +27,12 @@ public final class NotificationPocketApplication extends Application {
     public void onCreate() {
         super.onCreate();
         installCrashLogger();
+        AuthorizationDiagnostics.record(this, "process_create");
         NotificationController.getInstance().recoverConnection(this);
     }
 
     /**
-     * Persists the first uncaught stack trace inside the app so field reports do not
+     * Persists the latest uncaught stack trace inside the app so field reports do not
      * depend on adb access, then chains to the platform handler unchanged.
      */
     private void installCrashLogger() {
@@ -39,11 +40,12 @@ public final class NotificationPocketApplication extends Application {
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
             try {
                 writeCrashLog(buildCrashReport(thread, throwable));
-            } catch (RuntimeException ignored) {
-                // Diagnostics must never replace or mask the original failure.
-            }
-            if (previous != null) {
-                previous.uncaughtException(thread, throwable);
+            } catch (Throwable ignored) {
+                // Reporting must never replace or suppress the original process failure.
+            } finally {
+                if (previous != null) {
+                    previous.uncaughtException(thread, throwable);
+                }
             }
         });
     }
@@ -93,10 +95,12 @@ public final class NotificationPocketApplication extends Application {
     }
 
     /** Removes the acknowledged report so it is not shown again on later launches. */
-    static void clearCrashLog(Context context) {
+    static boolean clearCrashLog(Context context) {
         File file = new File(context.getFilesDir(), CRASH_LOG);
         if (file.isFile() && !file.delete()) {
             Log.w(TAG, "Unable to clear crash log");
+            return false;
         }
+        return true;
     }
 }
