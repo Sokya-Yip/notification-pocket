@@ -280,9 +280,10 @@ public final class MainActivity extends Activity implements NotificationControll
     }
 
     private void openNotificationAccessSettings() {
-        ComponentName listener = new ComponentName(this, NotificationPocketService.class);
         // Both builds must exercise the same navigation so emulator checks cover what users run.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !detailSettingsUnreachable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !detailSettingsUnreachable
+                && !prefersNotificationListPage()) {
+            ComponentName listener = new ComponentName(this, NotificationPocketService.class);
             // Settings reads this extra with getStringExtra and unflattens it. Passing the
             // ComponentName parcelable instead yields null inside Settings and crashes its
             // detail page after startActivity has already returned, so our catch cannot see it.
@@ -300,6 +301,16 @@ public final class MainActivity extends Activity implements NotificationControll
             }
         }
         openNotificationAccessList();
+    }
+
+    /**
+     * HyperOS-class builds are the only part of this flow with no device evidence behind the
+     * detail page, and they are the reported place where it leaves the caller at the launcher.
+     * The list page takes no extra at all, so an extra-type mismatch cannot break it. The cost
+     * is one extra scroll for a screen this project cannot verify.
+     */
+    private boolean prefersNotificationListPage() {
+        return "xiaomi".equalsIgnoreCase(Build.MANUFACTURER);
     }
 
     private void openNotificationAccessList() {
