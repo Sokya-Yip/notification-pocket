@@ -59,8 +59,14 @@ public final class MainActivity extends Activity implements NotificationControll
     private LinearLayout hiddenTab;
     private LinearLayout activeTab;
 
+    /** How long to wait for the system Settings page to actually take window focus. */
+    private static final long SETTINGS_HANDOFF_CHECK_MS = 1200L;
+
     private boolean showHidden;
     private boolean resumeAuthorization;
+    /** Set once the vendor detail page failed to appear, so a retry skips it. */
+    private boolean detailSettingsUnreachable;
+    private Runnable settingsHandoffCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,6 +124,8 @@ public final class MainActivity extends Activity implements NotificationControll
     @Override
     protected void onResume() {
         super.onResume();
+        // Coming back means the Settings page did take over; the handoff needs no repair.
+        cancelSettingsHandoffWatch();
         AuthorizationDiagnostics.record(this, "activity_resume");
         if (AuthorizationDiagnostics.isActive(this)) {
             queryNotificationAccess(true);
@@ -149,6 +157,7 @@ public final class MainActivity extends Activity implements NotificationControll
 
     @Override
     protected void onDestroy() {
+        cancelSettingsHandoffWatch();
         AuthorizationDiagnostics.record(this, "activity_destroy");
         super.onDestroy();
     }
@@ -273,7 +282,7 @@ public final class MainActivity extends Activity implements NotificationControll
     private void openNotificationAccessSettings() {
         ComponentName listener = new ComponentName(this, NotificationPocketService.class);
         // Both builds must exercise the same navigation so emulator checks cover what users run.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !detailSettingsUnreachable) {
             // Settings reads this extra with getStringExtra and unflattens it. Passing the
             // ComponentName parcelable instead yields null inside Settings and crashes its
             // detail page after startActivity has already returned, so our catch cannot see it.
@@ -286,15 +295,47 @@ public final class MainActivity extends Activity implements NotificationControll
                     .putExtra(FRAGMENT_ARGS_KEY, flattened)
                     .putExtra(SHOW_FRAGMENT_ARGS, fragmentArgs);
             if (startSettingsActivity(detail)) {
+                watchSettingsHandoff();
                 return;
             }
         }
+        openNotificationAccessList();
+    }
+
+    private void openNotificationAccessList() {
         if (startSettingsActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))) {
             Toast.makeText(this, R.string.find_notification_pocket, Toast.LENGTH_LONG).show();
             return;
         }
         if (!openApplicationDetailsSettings()) {
             Toast.makeText(this, R.string.permission_settings_unavailable, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * A vendor detail page can die after startActivity has returned, which leaves the caller
+     * visible with no explanation and nothing to catch. Losing window focus is the only local
+     * evidence that Settings really took over, so repair the handoff instead of trusting the
+     * return value of startActivity.
+     */
+    private void watchSettingsHandoff() {
+        cancelSettingsHandoffWatch();
+        settingsHandoffCheck = () -> {
+            settingsHandoffCheck = null;
+            if (!hasWindowFocus() || isFinishing() || isDestroyed()) {
+                return;
+            }
+            detailSettingsUnreachable = true;
+            AuthorizationDiagnostics.record(this, "settings_handoff_not_observed");
+            openNotificationAccessList();
+        };
+        permissionButton.postDelayed(settingsHandoffCheck, SETTINGS_HANDOFF_CHECK_MS);
+    }
+
+    private void cancelSettingsHandoffWatch() {
+        if (settingsHandoffCheck != null) {
+            permissionButton.removeCallbacks(settingsHandoffCheck);
+            settingsHandoffCheck = null;
         }
     }
 
@@ -469,14 +510,22 @@ public final class MainActivity extends Activity implements NotificationControll
         if (report == null || report.isEmpty()) {
             return;
         }
+        // The log outlives this dialog only when the user is on the way into the feedback flow,
+        // which reads the file itself. Any other acknowledgement must not resurrect it on the
+        // next launch; the log holds only the latest crash, so it never stops being shown.
         new AlertDialog.Builder(this)
                 .setTitle(R.string.crash_dialog_title)
                 .setMessage(getString(R.string.crash_dialog_message) + "\n\n" + report)
                 .setPositiveButton(R.string.feedback,
                         (dialog, which) -> showFeedbackDialog())
-                .setNeutralButton(R.string.copy, (dialog, which) ->
-                        copyText("crash log", report))
-                .setNegativeButton(R.string.close, null)
+                .setNeutralButton(R.string.copy, (dialog, which) -> {
+                    copyText("crash log", report);
+                    NotificationPocketApplication.clearCrashLog(this);
+                })
+                .setNegativeButton(R.string.close,
+                        (dialog, which) -> NotificationPocketApplication.clearCrashLog(this))
+                .setOnCancelListener(dialog ->
+                        NotificationPocketApplication.clearCrashLog(this))
                 .show();
     }
 
