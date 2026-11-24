@@ -6,7 +6,7 @@
 
 ## 下载
 
-正式 APK 和 SHA-256 校验值发布在 [GitHub Releases](https://github.com/Sokya-Yip/notification-pocket/releases/latest)。当前版本 **v1.4.3（versionCode 8）**，支持 Android 8.1（API 27）及以上，包名 `com.notificationpocket`。
+正式 APK 和 SHA-256 校验值发布在 [GitHub Releases](https://github.com/Sokya-Yip/notification-pocket/releases/latest)。当前版本 **v1.4.4（versionCode 9）**，支持 Android 8.1（API 27）及以上，包名 `com.notificationpocket`。
 
 > 旧测试包与正式包签名不同，不能直接覆盖安装；升级前先恢复仍需立即接收的通知。
 
