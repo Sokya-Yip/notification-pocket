@@ -113,7 +113,11 @@ public final class MainActivity extends Activity implements NotificationControll
         findViewById(R.id.restricted_settings_button).setOnClickListener(
                 view -> showRestrictedSettingsDialog());
         selectTab(false);
-        showCrashDialogIfPresent();
+        // A crash dialog and an unfinished-handoff notice are mutually exclusive: both are
+        // startup notices, and stacking two AlertDialogs would hide the first behind the second.
+        if (!showCrashDialogIfPresent()) {
+            showUnfinishedHandoffDialogIfNeeded();
+        }
     }
 
     @Override
@@ -545,11 +549,35 @@ public final class MainActivity extends Activity implements NotificationControll
         }
     }
 
-    /** Surfaces an uncaught stack trace on the next launch so testers can copy it without adb. */
-    private void showCrashDialogIfPresent() {
+    /**
+     * Detects the vendor-kill case that leaves no crash log at all: the last authorization
+     * jump returned from startActivity but the process never resumed. It is reported on the
+     * next cold start, because that is the first moment our code runs again to speak about it.
+     */
+    private void showUnfinishedHandoffDialogIfNeeded() {
+        if (!AuthorizationDiagnostics.lastHandoffNeverReturned(this)) {
+            return;
+        }
+        String report = FeedbackReport.build(this, getString(R.string.feedback_issue_crash), "");
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.handoff_unfinished_title)
+                .setMessage(R.string.handoff_unfinished_message)
+                .setPositiveButton(R.string.feedback_share,
+                        (dialog, which) -> shareFeedback(report))
+                .setNeutralButton(R.string.copy, (dialog, which) ->
+                        copyText("notification pocket feedback", report))
+                .setNegativeButton(R.string.close, null)
+                .show();
+    }
+
+    /**
+     * Surfaces an uncaught stack trace on the next launch so testers can copy it without adb.
+     * Returns whether a notice was shown so only one startup notice appears at a time.
+     */
+    private boolean showCrashDialogIfPresent() {
         String report = NotificationPocketApplication.readCrashLog(this);
         if (report == null || report.isEmpty()) {
-            return;
+            return false;
         }
         // The log outlives this dialog only when the user is on the way into the feedback flow,
         // which reads the file itself. Any other acknowledgement must not resurrect it on the
@@ -568,6 +596,7 @@ public final class MainActivity extends Activity implements NotificationControll
                 .setOnCancelListener(dialog ->
                         NotificationPocketApplication.clearCrashLog(this))
                 .show();
+        return true;
     }
 
     private void showSupportDialog() {

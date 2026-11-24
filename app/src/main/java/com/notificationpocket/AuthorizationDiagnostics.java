@@ -59,6 +59,22 @@ final class AuthorizationDiagnostics {
         return file.isFile() && !hasLimitReached(file);
     }
 
+    /**
+     * True when the last authorization jump was never followed by this app coming back to the
+     * foreground. A vendor can kill the caller so abruptly that onStop never runs, so an
+     * activity_stop cannot be required here; the absence of an activity_resume after the jump
+     * is the only signal that survives both a clean kill and a hard one. Anchoring on the
+     * attempt (not the return) also covers a startActivity that threw on a vendor build.
+     */
+    static boolean lastHandoffNeverReturned(Context context) {
+        String trace = read(context);
+        if (trace == null) {
+            return false;
+        }
+        int jump = trace.lastIndexOf("settings_start_attempt");
+        return jump >= 0 && !trace.substring(jump).contains("activity_resume");
+    }
+
     static void record(Context context, String event, Throwable failure) {
         record(context, event + " | " + failure.getClass().getName() + ": "
                 + failure.getMessage() + "\n" + Log.getStackTraceString(failure));
